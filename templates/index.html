@@ -4,436 +4,573 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>МемСайт</title>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;700;900&family=Onest:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;700;900&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #1a1a24;
-    --border: #2a2a3a;
+    --bg: #07070e;
+    --surface: #0f0f1a;
+    --surface2: #181828;
+    --surface3: #1e1e30;
+    --border: #252538;
+    --border2: #2e2e48;
     --accent: #7c3aed;
     --accent2: #a855f7;
+    --accent3: #c084fc;
     --glow: #7c3aed55;
-    --text: #e8e8f0;
-    --muted: #6b6b80;
+    --text: #eeeef8;
+    --muted: #6b6b88;
+    --muted2: #9494b0;
     --error: #f87171;
     --success: #34d399;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-    background: var(--bg);
-    color: var(--text);
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
     font-family: 'Onest', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
+    min-height: 100vh; overflow-x: hidden;
   }
-
-  body::before {
-    content: '';
-    position: fixed;
-    top: -50%; left: -50%;
-    width: 200%; height: 200%;
-    background:
-      radial-gradient(ellipse at 70% 20%, #7c3aed18 0%, transparent 50%),
-      radial-gradient(ellipse at 20% 80%, #a855f710 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
+  .bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.22; animation: orbFloat 14s ease-in-out infinite; }
+  .bg-orb:nth-child(1) { width: 600px; height: 600px; background: radial-gradient(circle, #7c3aed, transparent); top: -200px; right: -100px; }
+  .bg-orb:nth-child(2) { width: 400px; height: 400px; background: radial-gradient(circle, #a855f7, transparent); bottom: -100px; left: -100px; animation-delay: -6s; animation-duration: 18s; }
+  .bg-orb:nth-child(3) { width: 280px; height: 280px; background: radial-gradient(circle, #6d28d9, transparent); top: 40%; left: 50%; animation-delay: -10s; animation-duration: 22s; }
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(40px,-60px) scale(1.1); }
+    66% { transform: translate(-30px,40px) scale(0.9); }
   }
-
+  body::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(124,58,237,0.03) 1px,transparent 1px), linear-gradient(90deg,rgba(124,58,237,0.03) 1px,transparent 1px);
+    background-size: 40px 40px;
+  }
   nav {
     position: fixed; top: 0; width: 100%; z-index: 100;
-    padding: 20px 40px;
+    padding: 0 40px; height: 68px;
     display: flex; justify-content: space-between; align-items: center;
-    background: rgba(10,10,15,0.8);
-    backdrop-filter: blur(20px);
+    background: rgba(7,7,14,0.88); backdrop-filter: blur(24px);
     border-bottom: 1px solid var(--border);
   }
-
   .logo {
-    font-family: 'Unbounded', sans-serif;
-    font-weight: 900; font-size: 1.2rem;
-    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 1.1rem; letter-spacing: 0.05em;
+    background: linear-gradient(135deg,#fff 0%,#c084fc 50%,#7c3aed 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    display: flex; align-items: center; gap: 10px;
   }
-
+  .logo-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent2); box-shadow: 0 0 12px var(--accent2);
+    animation: pulse 2s ease-in-out infinite; -webkit-text-fill-color: initial;
+  }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:0.7} }
   .nav-auth { display: flex; gap: 12px; align-items: center; }
   .nav-user { display: flex; align-items: center; gap: 16px; }
-
   .username-badge {
-    font-size: 0.85rem; color: var(--accent2); font-weight: 500;
-    padding: 6px 14px;
-    background: var(--glow);
-    border: 1px solid var(--accent); border-radius: 20px;
+    font-size: 0.82rem; color: var(--accent3); font-weight: 600;
+    padding: 6px 16px;
+    background: linear-gradient(135deg,rgba(124,58,237,0.15),rgba(168,85,247,0.1));
+    border: 1px solid rgba(168,85,247,0.3); border-radius: 24px;
   }
-
   .btn {
-    padding: 10px 22px; border-radius: 8px;
-    font-family: 'Onest', sans-serif; font-size: 0.875rem; font-weight: 500;
-    cursor: pointer; transition: all 0.2s ease; border: none; outline: none;
+    padding: 9px 22px; border-radius: 8px;
+    font-family: 'Onest', sans-serif; font-size: 0.875rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; border: none; outline: none;
   }
+  .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(168,85,247,0.5); background: rgba(124,58,237,0.08); }
 
-  .btn-ghost {
-    background: transparent; color: var(--muted);
-    border: 1px solid var(--border);
+.btn-primary {
+    background: linear-gradient(135deg,var(--accent),var(--accent2)); color: white;
+    box-shadow: 0 0 20px var(--glow), 0 2px 8px rgba(0,0,0,0.3);
   }
-  .btn-ghost:hover { color: var(--text); border-color: var(--accent); background: var(--glow); }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: white; box-shadow: 0 0 20px var(--glow);
-  }
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 0 35px var(--glow), 0 4px 15px rgba(124,58,237,0.4);
-  }
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-logout {
-    background: transparent; color: var(--error);
-    border: 1px solid rgba(248,113,113,0.3);
-    font-size: 0.8rem; padding: 7px 16px;
-  }
-  .btn-logout:hover { background: rgba(248,113,113,0.1); border-color: var(--error); }
-
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 35px var(--glow), 0 8px 24px rgba(124,58,237,0.4); }
+  .btn-logout { background: transparent; color: var(--error); border: 1px solid rgba(248,113,113,0.25); font-size: 0.8rem; padding: 7px 16px; }
+  .btn-logout:hover { background: rgba(248,113,113,0.08); border-color: var(--error); }
   main { position: relative; z-index: 1; }
-
   .hero {
-    min-height: 100vh;
-    display: flex; flex-direction: column;
+    min-height: 100vh; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    text-align: center; padding: 120px 20px 60px;
+    text-align: center; padding: 120px 20px 80px;
   }
-
-  .hero-tag {
-    font-size: 0.75rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--accent2);
-    margin-bottom: 24px; font-weight: 500;
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent3); font-weight: 600; padding: 7px 18px; margin-bottom: 32px;
+    background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.2); border-radius: 24px;
   }
-
+  .hero-pill span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); }
   .hero-title {
     font-family: 'Unbounded', sans-serif;
-    font-size: clamp(2.5rem, 8vw, 6rem);
-    font-weight: 900; line-height: 1.05; letter-spacing: -0.03em;
-    margin-bottom: 20px;
-    background: linear-gradient(160deg, #fff 30%, #a855f7 70%, #7c3aed);
+    font-size: clamp(2.8rem, 9vw, 6.5rem);
+    font-weight: 900; line-height: 1.02; letter-spacing: -0.03em; margin-bottom: 24px;
+    background: linear-gradient(160deg,#fff 20%,#e0aaff 55%,#7c3aed 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
-
-  .hero-sub {
-    font-size: 1.1rem; color: var(--muted); margin-bottom: 48px;
-    font-weight: 300; letter-spacing: 0.01em;
-  }
-
-  .meme-btn {
-    position: relative; padding: 18px 52px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: white; font-family: 'Unbounded', sans-serif;
-    font-weight: 700; font-size: 1rem; letter-spacing: 0.02em;
+  .hero-sub { font-size: 1.05rem; color: var(--muted2); margin-bottom: 52px; font-weight: 300; max-width: 480px; line-height: 1.6; }
+  .hero-cta-group { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .cta-register {
+    padding: 17px 52px;
+    background: linear-gradient(135deg,var(--accent),var(--accent2)); color: white;
+    font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.03em;
     border: none; border-radius: 12px; cursor: pointer;
     transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    box-shadow: 0 0 40px var(--glow), 0 8px 32px rgba(124,58,237,0.3);
-    overflow: hidden;
+    box-shadow: 0 0 40px var(--glow), 0 8px 32px rgba(124,58,237,0.35);
   }
-  .meme-btn::before {
-    content: ''; position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
-    opacity: 0; transition: opacity 0.3s;
+  .cta-register:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 0 70px var(--glow), 0 16px 48px rgba(124,58,237,0.5); }
+  .cta-login {
+    padding: 17px 36px; background: transparent; color: var(--muted2);
+    border: 1px solid var(--border2); border-radius: 12px;
+    font-family: 'Onest', sans-serif; font-weight: 500; font-size: 0.95rem;
+    cursor: pointer; transition: all 0.2s;
   }
-  .meme-btn:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 0 60px var(--glow), 0 16px 40px rgba(124,58,237,0.5);
+  .cta-login:hover { color: var(--text); border-color: rgba(168,85,247,0.4); background: rgba(124,58,237,0.06); }
+  .hero-stats { display: flex; gap: 40px; margin-top: 72px; padding-top: 40px; border-top: 1px solid var(--border); }
+  .stat { text-align: center; }
+  .stat-num {
+    font-family: 'Unbounded', sans-serif; font-size: 1.6rem; font-weight: 900;
+    background: linear-gradient(135deg,#fff,var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .meme-btn:hover::before { opacity: 1; }
-  .meme-btn:active { transform: translateY(-1px) scale(0.99); }
-.meme-container {
-    margin-top: 60px; opacity: 0;
-    transform: translateY(30px) scale(0.95);
-    transition: all 0.7s cubic-bezier(0.34,1.2,0.64,1);
-    pointer-events: none;
+  .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+  #memeZone {
+    min-height: 100vh; padding: 100px 20px 80px;
+    flex-direction: column; align-items: center; justify-content: center; text-align: center;
   }
-  .meme-container.visible {
-    opacity: 1; transform: translateY(0) scale(1); pointer-events: auto;
-  }
+  .meme-header { margin-bottom: 48px; }
+  .meme-welcome { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent3); margin-bottom: 16px; font-weight: 600; }
+  .meme-title {
+    font-family: 'Unbounded', sans-serif; font-size: clamp(2rem,5vw,3.5rem);
+    font-weight: 900; letter-spacing: -0.02em; line-height: 1.1;
+    background: linear-gradient(135deg,#fff 30%,#c084fc 80%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;
 
-  .meme-frame {
-    position: relative; display: inline-block;
-    border-radius: 16px; overflow: hidden;
-    border: 1px solid var(--border);
-    box-shadow: 0 0 80px var(--glow), 0 32px 64px rgba(0,0,0,0.6);
+}
+  .meme-subtitle { font-size: 0.95rem; color: var(--muted2); font-weight: 300; }
+  .meme-card-wrap { position: relative; width: 100%; max-width: 560px; margin-bottom: 36px; }
+  .meme-card-wrap::before {
+    content: ''; position: absolute; inset: -3px; border-radius: 22px;
+    background: linear-gradient(135deg,var(--accent),var(--accent2),var(--accent3),var(--accent));
+    background-size: 300% 300%; animation: gradientShift 4s ease infinite;
+    opacity: 0.6; z-index: 0; filter: blur(1px);
   }
-  .meme-frame::before {
-    content: ''; position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(124,58,237,0.15), transparent 50%);
-    z-index: 1; pointer-events: none;
+  @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+  .meme-card {
+    position: relative; z-index: 1; background: var(--surface);
+    border-radius: 20px; overflow: hidden;
+    min-height: 340px; display: flex; align-items: center; justify-content: center;
   }
-  .meme-frame img {
-    display: block; max-width: min(500px, 85vw); border-radius: 16px;
+  .meme-card img {
+    display: block; width: 100%; max-height: 520px; object-fit: contain;
+    border-radius: 20px; transition: opacity 0.4s ease, transform 0.4s ease;
   }
-  .meme-caption { margin-top: 16px; font-size: 0.85rem; color: var(--muted); font-style: italic; }
+  .meme-card img.loading { opacity: 0; transform: scale(0.97); }
+  .meme-card img.loaded { opacity: 1; transform: scale(1); }
+  .meme-skeleton {
+    position: absolute; inset: 0; border-radius: 20px;
+    background: linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .meme-skeleton.hidden { display: none; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skeleton-icon { font-size: 3rem; opacity: 0.2; }
+  .meme-counter {
+    position: absolute; top: 14px; right: 14px; z-index: 2;
+    background: rgba(7,7,14,0.75); backdrop-filter: blur(10px);
+    border: 1px solid var(--border2); border-radius: 20px;
+    padding: 5px 12px; font-size: 0.75rem; color: var(--muted2); font-weight: 500;
+  }
+  .meme-counter span { color: var(--accent3); font-weight: 700; }
+  .meme-controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .btn-next {
+    position: relative; overflow: hidden;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 48px;
+    background: linear-gradient(135deg,var(--accent),var(--accent2)); color: white;
+    font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.03em;
+    border: none; border-radius: 14px; cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 0 40px var(--glow), 0 8px 28px rgba(124,58,237,0.4);
+  }
+  .btn-next:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-next:hover:not(:disabled) { transform: translateY(-3px) scale(1.05); box-shadow: 0 0 70px var(--glow), 0 16px 48px rgba(124,58,237,0.55); }
+  .btn-icon { display: inline-block; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  .btn-next:hover .btn-icon { transform: rotate(20deg) scale(1.2); }
+  .btn-spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .btn-next.loading .btn-text, .btn-next.loading .btn-icon { display: none; }
+  .btn-next.loading .btn-spinner { display: inline-block; }
+  .reactions { display: flex; gap: 10px; margin-top: 20px; }
+  .reaction-btn {
+    display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted2); font-size: 0.85rem; cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .reaction-btn:hover { border-color: var(--border2); color: var(--text); transform: translateY(-2px); }
 
+.reaction-btn.active { background: rgba(124,58,237,0.12); border-color: rgba(168,85,247,0.35); color: var(--text); }
+  .reaction-count { font-size: 0.78rem; font-weight: 600; }
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px;
+    padding: 14px 24px; font-size: 0.9rem; font-weight: 500; color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 300;
+    transition: transform 0.4s cubic-bezier(0.34,1.5,0.64,1); white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
   .overlay {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(12px);
     z-index: 200; align-items: center; justify-content: center; padding: 20px;
   }
   .overlay.active { display: flex; }
-
   .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 20px; padding: 48px 40px;
-    width: 100%; max-width: 420px; position: relative;
-    box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 120px var(--glow);
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 24px; padding: 52px 44px;
+    width: 100%; max-width: 440px; position: relative;
+    box-shadow: 0 0 80px rgba(0,0,0,0.6), 0 0 160px var(--glow);
     animation: modalIn 0.4s cubic-bezier(0.34,1.4,0.64,1);
   }
-
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.9) translateY(20px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
+  @keyframes modalIn { from{opacity:0;transform:scale(0.88) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
   .modal-close {
-    position: absolute; top: 16px; right: 20px;
-    background: none; border: none; color: var(--muted);
-    font-size: 1.5rem; cursor: pointer; transition: color 0.2s; line-height: 1;
+    position: absolute; top: 18px; right: 22px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); width: 32px; height: 32px; border-radius: 8px;
+    font-size: 1.1rem; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
   }
-  .modal-close:hover { color: var(--text); }
-
+  .modal-close:hover { color: var(--text); background: var(--surface3); }
+  .modal-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: linear-gradient(135deg,rgba(124,58,237,0.2),rgba(168,85,247,0.1));
+    border: 1px solid rgba(168,85,247,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; margin-bottom: 24px;
+  }
   .modal-title {
-    font-family: 'Unbounded', sans-serif; font-size: 1.5rem; font-weight: 700;
-    margin-bottom: 8px;
-    background: linear-gradient(135deg, #fff, var(--accent2));
+    font-family: 'Unbounded', sans-serif; font-size: 1.45rem; font-weight: 700;
+    margin-bottom: 6px;
+    background: linear-gradient(135deg,#fff 30%,var(--accent3));
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
-
-  .modal-sub { font-size: 0.875rem; color: var(--muted); margin-bottom: 36px; }
-
-  .form-group { margin-bottom: 20px; }
-
-  .form-label {
-    display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted);
-    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
-  }
-
+  .modal-sub { font-size: 0.875rem; color: var(--muted); margin-bottom: 36px; line-height: 1.5; }
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
   .form-input {
-    width: 100%; padding: 14px 16px;
+    width: 100%; padding: 13px 16px;
     background: var(--surface2); border: 1px solid var(--border);
     border-radius: 10px; color: var(--text);
     font-family: 'Onest', sans-serif; font-size: 0.95rem;
     transition: all 0.2s; outline: none;
   }
-  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.18); }
   .form-input::placeholder { color: var(--muted); }
-
-  .form-error {
-    display: none; font-size: 0.8rem; color: var(--error);
-    margin-top: 8px; padding: 10px 14px;
-    background: rgba(248,113,113,0.1);
-    border: 1px solid rgba(248,113,113,0.25); border-radius: 8px;
-  }
+  .form-error { display: none; font-size: 0.8rem; color: var(--error); margin-top: 10px; padding: 10px 14px; background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.2); border-radius: 8px; }
   .form-error.show { display: block; }
-
-  .form-success {
-    display: none; font-size: 0.8rem; color: var(--success);
-    margin-top: 8px; padding: 10px 14px;
-    background: rgba(52,211,153,0.1);
-    border: 1px solid rgba(52,211,153,0.25); border-radius: 8px;
-  }
+  .form-success { display: none; font-size: 0.8rem; color: var(--success); margin-top: 10px; padding: 10px 14px; background: rgba(52,211,153,0.07); border: 1px solid rgba(52,211,153,0.2); border-radius: 8px; }
   .form-success.show { display: block; }
-
-  .btn-full { width: 100%; padding: 15px; margin-top: 8px; font-size: 1rem; border-radius: 10px; }
-
-  .modal-switch { text-align: center; margin-top: 24px; font-size: 0.85rem; color: var(--muted); }
-  .modal-switch a { color: var(--accent2); text-decoration: none; font-weight: 500; cursor: pointer; transition: color 0.2s; }
+  .btn-full { width: 100%; padding: 15px; margin-top: 10px; font-size: 0.95rem; border-radius: 12px; }
+  .modal-switch { text-align: center; margin-top: 20px; font-size: 0.85rem; color: var(--muted); }
+  .modal-switch a { color: var(--accent3); text-decoration: none; font-weight: 600; cursor: pointer; transition: color 0.2s; }
   .modal-switch a:hover { color: white; }
-
-  @media (max-width: 600px) {
-    nav { padding: 16px 20px; }
-    .modal { padding: 36px 24px; }
-  }
+  @media (max-width: 600px) { nav { padding: 0 16px; } .modal { padding: 36px 24px; } .hero-stats { gap: 24px; } }
 </style>
 </head>
 <body>
+
+> ••𝓝𝓲𝓰𝓱𝓽☾:
+<div class="bg-orbs">
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+</div>
+
 <nav>
-  <div class="logo">МЕМ·САЙТ</div>
+  <div class="logo"><span class="logo-dot"></span> MEM SITE</div>
   <div class="nav-auth" id="navGuest">
     <button class="btn btn-ghost" onclick="openModal('login')">Вход</button>
     <button class="btn btn-primary" onclick="openModal('register')">Регистрация</button>
   </div>
   <div class="nav-user" id="navUser" style="display:none">
     <span class="username-badge" id="usernameDisplay"></span>
-    <button class="btn btn-logout" onclick="logout()">Выйти</button>
+    <button class="btn btn-logout" onclick="doLogout()">Выйти</button>
   </div>
 </nav>
 
 <main>
-  <section class="hero">
-    <p class="hero-tag">✦ Добро пожаловать ✦</p>
-    <h1 class="hero-title">Тут живут<br>мемы</h1>
-    <p class="hero-sub">Нажми кнопку. Ты знаешь что делать.</p>
-    <button class="meme-btn" onclick="revealMeme()">нажми пж</button>
-    <div class="meme-container" id="memeContainer">
-      <div class="meme-frame">
-        <img src="/static/image.png" alt="Мем" onerror="this.src='https://i.imgflip.com/30b1gx.jpg'">
-      </div>
-      <p class="meme-caption">ты нажал. ты это сделал.</p>
+
+  <section class="hero" id="heroSection">
+    <div class="hero-pill"><span></span> Эксклюзивный контент <span></span></div>
+    <h1 class="hero-title">Тут живут<br>лучшие мемы</h1>
+    <p class="hero-sub">Зарегистрируйся и получи доступ к коллекции самых свежих мемов планеты.</p>
+    <div class="hero-cta-group">
+      <button class="cta-register" onclick="openModal('register')">Начать бесплатно</button>
+      <button class="cta-login" onclick="openModal('login')">Уже есть аккаунт</button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">10</div><div class="stat-label">мемов</div></div>
+      <div class="stat"><div class="stat-num">∞</div><div class="stat-label">смеха</div></div>
+      <div class="stat"><div class="stat-num">0 руб</div><div class="stat-label">цена</div></div>
     </div>
   </section>
+
+  <section id="memeZone" style="display:none">
+    <div class="meme-header">
+      <p class="meme-welcome" id="memeWelcome">Добро пожаловать!</p>
+      <h2 class="meme-title">Мем по требованию</h2>
+      <p class="meme-subtitle">Нажми кнопку и получи случайный мем.</p>
+    </div>
+
+    <div class="meme-card-wrap" id="memeCardWrap" style="display:none">
+      <div class="meme-counter">мем <span id="memeNum">1</span></div>
+      <div class="meme-card" id="memeCard">
+        <div class="meme-skeleton" id="memeSkeleton"><div class="skeleton-icon">🖼️</div></div>
+        <img id="memeImg" src="" alt="Meme" class="loading">
+      </div>
+    </div>
+
+    <div class="meme-controls">
+      <button class="btn-next" id="btnNext" onclick="loadMeme()">
+        <span class="btn-icon">🎲</span>
+        <span class="btn-text">Следующий мем</span>
+        <div class="btn-spinner"></div>
+      </button>
+    </div>
+
+    <div class="reactions" id="reactions" style="display:none">
+      <button class="reaction-btn" onclick="doReact(this, 'r1')"><span>😂</span><span class="reaction-count" id="r1">0</span></button>
+      <button class="reaction-btn" onclick="doReact(this, 'r2')"><span>💀</span><span class="reaction-count" id="r2">0</span></button>
+      <button class="reaction-btn" onclick="doReact(this, 'r3')"><span>🔥</span><span class="reaction-count" id="r3">0</span></button>
+      <button class="reaction-btn" onclick="doReact(this, 'r4')"><span>🥴</span><span class="reaction-count" id="r4">0</span></button>
+    </div>
+  </section>
+
 </main>
 
+<div class="toast" id="toast"></div>
+
 <div class="overlay" id="overlay" onclick="closeOnBackdrop(event)">
-  <div class="modal" id="modal">
-    <button class="modal-close" onclick="closeModal()">×</button>
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">x</button>
 
     <div id="loginForm">
-      <h2 class="modal-title">Добро пожаловать</h2>
-      <p class="modal-sub">Войди в свой аккаунт</p>
+      <div class="modal-icon">🔑</div>
+      <h2 class="modal-title">С возвращением</h2>
+      <p class="modal-sub">Войди и смотри мемы без ограничений</p>
       <div class="form-group">
         <label class="form-label">Логин</label>
-        <input class="form-input" type="text" id="loginUsername" placeholder="твой логин">
+        <input class="form-input" type="text" id="loginUsername" placeholder="твой логин" autocomplete="username">
       </div>
       <div class="form-group">
         <label class="form-label">Пароль</label>
         <input class="form-input" type="password" id="loginPassword" placeholder="••••••••"
-               onkeydown="if(event.key==='Enter') login()">
-      </div>
+               onkeydown="if(event.key==='Enter') doLogin()" autocomplete="current-password">
+
+</div>
       <div class="form-error" id="loginError"></div>
-      <button class="btn btn-primary btn-full" onclick="login()">Войти</button>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">Войти</button>
       <div class="modal-switch">Нет аккаунта? <a onclick="switchModal('register')">Зарегистрироваться</a></div>
     </div>
 
     <div id="registerForm" style="display:none">
+      <div class="modal-icon">✨</div>
       <h2 class="modal-title">Регистрация</h2>
-      <p class="modal-sub">Создай новый аккаунт</p>
+      <p class="modal-sub">Создай аккаунт и открой доступ к мемам</p>
       <div class="form-group">
         <label class="form-label">Логин</label>
-        <input class="form-input" type="text" id="regUsername" placeholder="придумай логин">
+<input class="form-input" type="text" id="regUsername" placeholder="придумай логин" autocomplete="username">
       </div>
       <div class="form-group">
         <label class="form-label">Пароль</label>
-        <input class="form-input" type="password" id="regPassword" placeholder="минимум 4 символа">
+        <input class="form-input" type="password" id="regPassword" placeholder="минимум 4 символа" autocomplete="new-password">
       </div>
       <div class="form-group">
         <label class="form-label">Повтор пароля</label>
         <input class="form-input" type="password" id="regConfirm" placeholder="повтори пароль"
-               onkeydown="if(event.key==='Enter') register()">
+               onkeydown="if(event.key==='Enter') doRegister()" autocomplete="new-password">
       </div>
       <div class="form-error" id="registerError"></div>
       <div class="form-success" id="registerSuccess"></div>
-      <button class="btn btn-primary btn-full" onclick="register()">Создать аккаунт</button>
+      <button class="btn btn-primary btn-full" onclick="doRegister()">Создать аккаунт</button>
       <div class="modal-switch">Уже есть аккаунт? <a onclick="switchModal('login')">Войти</a></div>
     </div>
+
   </div>
 </div>
 
 <script>
-  async function checkAuth() {
-    const res = await fetch('/api/me');
-    const data = await res.json();
-    if (data.ok) {
-      setUser(data.username);
-    } else {
-      setGuest();
-    }
-  }
+var memeCount = 0;
 
-  function setUser(username) {
-    document.getElementById('navGuest').style.display = 'none';
-    document.getElementById('navUser').style.display = 'flex';
-    document.getElementById('usernameDisplay').textContent = '👤 ' + username;
-  }
+function openModal(type) {
+  document.getElementById('overlay').classList.add('active');
+  switchModal(type);
+}
 
-  function setGuest() {
-    document.getElementById('navGuest').style.display = 'flex';
-    document.getElementById('navUser').style.display = 'none';
-  }
+function closeModal() {
+  document.getElementById('overlay').classList.remove('active');
+  clearErrors();
+}
 
-  function revealMeme() {
-    document.getElementById('memeContainer').classList.toggle('visible');
-  }
-
-  function openModal(type) {
-    document.getElementById('overlay').classList.add('active');
-    switchModal(type);
-  }
-
-  function closeModal() {
-    document.getElementById('overlay').classList.remove('active');
-    clearErrors();
-  }
 function closeOnBackdrop(e) {
-    if (e.target === document.getElementById('overlay')) closeModal();
-  }
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
 
-  function switchModal(type) {
-    document.getElementById('loginForm').style.display = type === 'login' ? 'block' : 'none';
-    document.getElementById('registerForm').style.display = type === 'register' ? 'block' : 'none';
-    clearErrors();
-  }
+function switchModal(type) {
+  document.getElementById('loginForm').style.display = (type === 'login') ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = (type === 'register') ? 'block' : 'none';
+  clearErrors();
+}
 
-  function clearErrors() {
-    ['loginError', 'registerError', 'registerSuccess'].forEach(id => {
-      const el = document.getElementById(id);
-      el.classList.remove('show');
-      el.textContent = '';
+function clearErrors() {
+  var ids = ['loginError', 'registerError', 'registerSuccess'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    el.classList.remove('show');
+    el.textContent = '';
+  }
+}
+
+function showError(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function showSuccess(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+var toastTimer;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2800);
+}
+
+function setUser(username) {
+  document.getElementById('navGuest').style.display = 'none';
+  document.getElementById('navUser').style.display = 'flex';
+  document.getElementById('usernameDisplay').textContent = username;
+  document.getElementById('memeWelcome').textContent = 'Привет, ' + username + '!';
+  document.getElementById('heroSection').style.display = 'none';
+  document.getElementById('memeZone').style.display = 'flex';
+  loadMeme();
+}
+
+function setGuest() {
+  document.getElementById('navGuest').style.display = 'flex';
+  document.getElementById('navUser').style.display = 'none';
+  document.getElementById('heroSection').style.display = 'flex';
+  document.getElementById('memeZone').style.display = 'none';
+}
+
+function loadMeme() {
+  var btn = document.getElementById('btnNext');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  fetch('/api/meme')
+    .then(function(res) {
+      if (res.status === 401) {
+        showToast('Войди чтобы смотреть мемы');
+setGuest();
+        openModal('login');
+        throw new Error('unauthorized');
+      }
+      return res.json();
+    })
+    .then(function(data) {
+      if (!data.ok) { showToast('Не удалось загрузить мем'); return; }
+      memeCount++;
+      document.getElementById('memeNum').textContent = memeCount;
+
+      var wrap = document.getElementById('memeCardWrap');
+      var img = document.getElementById('memeImg');
+      var skeleton = document.getElementById('memeSkeleton');
+
+      wrap.style.display = 'block';
+      skeleton.classList.remove('hidden');
+      img.classList.remove('loaded');
+      img.classList.add('loading');
+
+      img.onload = function() {
+        skeleton.classList.add('hidden');
+        img.classList.remove('loading');
+        img.classList.add('loaded');
+        document.getElementById('reactions').style.display = 'flex';
+        resetReactions();
+      };
+      img.src = data.url;
+    })
+    .catch(function(e) { if (e.message !== 'unauthorized') showToast('Ошибка сети'); })
+    .finally(function() {
+      btn.classList.remove('loading');
+      btn.disabled = false;
     });
-  }
+}
 
-  function showError(id, msg) {
-    const el = document.getElementById(id);
-    el.textContent = msg;
-    el.classList.add('show');
-  }
+function resetReactions() {
+  var btns = document.querySelectorAll('.reaction-btn');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  for (var j = 1; j <= 4; j++) document.getElementById('r' + j).textContent = '0';
+}
 
-  function showSuccess(id, msg) {
-    const el = document.getElementById(id);
-    el.textContent = msg;
-    el.classList.add('show');
-  }
+function doReact(btn, counterId) {
+  var isActive = btn.classList.contains('active');
+  var el = document.getElementById(counterId);
+  var count = parseInt(el.textContent);
+  if (isActive) { btn.classList.remove('active'); el.textContent = Math.max(0, count - 1); }
+  else { btn.classList.add('active'); el.textContent = count + 1; }
+}
 
-  async function login() {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
+function doLogin() {
+  var username = document.getElementById('loginUsername').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) { closeModal(); setUser(data.username); showToast('Добро пожаловать, ' + data.username + '!'); }
+    else { showError('loginError', data.error); }
+  });
+}
+
+function doRegister() {
+  var username = document.getElementById('regUsername').value.trim();
+  var password = document.getElementById('regPassword').value;
+  var confirm = document.getElementById('regConfirm').value;
+  fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password, confirm: confirm })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
     if (data.ok) {
-      closeModal();
-      setUser(data.username);
-    } else {
-      showError('loginError', data.error);
-    }
-  }
+      showSuccess('registerSuccess', 'Аккаунт создан!');
+      setTimeout(function() { closeModal(); setUser(data.username); showToast('Аккаунт создан! Добро пожаловать!'); }, 900);
+    } else { showError('registerError', data.error); }
+  });
+}
 
-  async function register() {
-    const username = document.getElementById('regUsername').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const confirm = document.getElementById('regConfirm').value;
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, confirm })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showSuccess('registerSuccess', '✓ Аккаунт создан! Входим...');
-      setTimeout(() => { closeModal(); setUser(data.username); }, 900);
-    } else {
-      showError('registerError', data.error);
-    }
-  }
+function doLogout() {
+  fetch('/api/logout', { method: 'POST' })
+    .then(function() { setGuest(); showToast('До встречи!'); });
+}
 
-  async function logout() {
-    await fetch('/api/logout', { method: 'POST' });
-    setGuest();
-  }
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
 
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  checkAuth();
+fetch('/api/me')
+  .then(function(r) { return r.json(); })
+  .then(function(data) { if (data.ok) setUser(data.username); else setGuest(); });
 </script>
 </body>
 </html>

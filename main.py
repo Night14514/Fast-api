@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Response, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import json, os, uuid
+import json, os, uuid, random, glob
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -11,20 +11,41 @@ templates = Jinja2Templates(directory="templates")
 USERS_FILE = "users.json"
 SESSIONS: dict[str, str] = {}
 
+
 def load_users() -> dict:
     if not os.path.exists(USERS_FILE):
         return {}
     with open(USERS_FILE, "r") as f:
         return json.load(f)
 
+
 def save_users(users: dict):
     with open(USERS_FILE, "w") as f:
         json.dump(users, f)
 
 
+def get_all_memes() -> list[str]:
+    patterns = ["static/*.png", "static/*.jpg", "static/*.jpeg", "static/*.gif", "static/*.webp"]
+    files = []
+    for p in patterns:
+        files.extend(glob.glob(p))
+    return [f.replace("\\", "/") for f in files]
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
+
+
+@app.get("/api/meme")
+async def get_meme(session_id: str = Cookie(default=None)):
+    if not session_id or session_id not in SESSIONS:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    memes = get_all_memes()
+    if not memes:
+        return JSONResponse({"ok": False, "error": "no memes found"}, status_code=404)
+    chosen = random.choice(memes)
+    return JSONResponse({"ok": True, "url": "/" + chosen, "total": len(memes)})
 
 
 @app.post("/api/register")
