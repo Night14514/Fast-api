@@ -1,27 +1,31 @@
-from fastapi import FastAPI, Request, Response, Cookie
+from fastapi import FastAPI, Request, Response, Cookie, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import json, os, uuid, random, glob
+from sqlalchemy.orm import Session
+from passlib.context import CryptContext
+import os, uuid, random, glob
+
+from database import get_db, init_db, User, Session as DBSession
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-USERS_FILE = "users.json"
-SESSIONS: dict[str, str] = {}
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def load_users() -> dict:
-    if not os.path.exists(USERS_FILE):
-        return {}
-    with open(USERS_FILE, "r") as f:
-        return json.load(f)
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 
-def save_users(users: dict):
-    with open(USERS_FILE, "w") as f:
-        json.dump(users, f)
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
 
 
 def get_all_memes() -> list[str]:
@@ -38,8 +42,14 @@ async def index(request: Request):
 
 
 @app.get("/api/meme")
-async def get_meme(session_id: str = Cookie(default=None)):
-    if not session_id or session_id not in SESSIONS:
+async def get_meme(
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db)
+):
+    if not session_id:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    db_session = db.query(DBSession).filter(DBSession.session_id == session_id).first()
+    if not db_session:
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     memes = get_all_memes()
     if not memes:
@@ -49,7 +59,7 @@ async def get_meme(session_id: str = Cookie(default=None)):
 
 
 @app.post("/api/register")
-async def register(request: Request):
+async def register(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -64,22 +74,26 @@ async def register(request: Request):
     if password != confirm:
         return JSONResponse({"ok": False, "error": "Пароли не совпадают"})
 
-    users = load_users()
-    if username in users:
+    existing = db.query(User).filter(User.username == username).first()
+    if existing:
         return JSONResponse({"ok": False, "error": "Этот логин уже занят"})
 
-    users[username] = password
-    save_users(users)
+    new_user = User(username=username, password_hash=hash_password(password))
+    db.add(new_user)
+    db.commit()
 
     session_id = str(uuid.uuid4())
-    SESSIONS[session_id] = username
+    db_session = DBSession(session_id=session_id, username=username)
+    db.add(db_session)
+    db.commit()
+
     response = JSONResponse({"ok": True, "username": username})
     response.set_cookie("session_id", session_id, httponly=True, samesite="lax")
     return response
 
 
 @app.post("/api/login")
-async def login(request: Request):
+async def login(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -87,30 +101,63 @@ async def login(request: Request):
     if not username or not password:
         return JSONResponse({"ok": False, "error": "Заполни все поля"})
 
-    users = load_users()
-    if username not in users:
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
         return JSONResponse({"ok": False, "error": "Пользователь не найден"})
-    if users[username] != password:
+    if not verify_password(password, user.password_hash):
         return JSONResponse({"ok": False, "error": "Неверный пароль"})
 
     session_id = str(uuid.uuid4())
-    SESSIONS[session_id] = username
+    db_session = DBSession(session_id=session_id, username=username)
+    db.add(db_session)
+    db.commit()
     response = JSONResponse({"ok": True, "username": username})
     response.set_cookie("session_id", session_id, httponly=True, samesite="lax")
     return response
 
 
 @app.post("/api/logout")
-async def logout(response: Response, session_id: str = Cookie(default=None)):
-    if session_id and session_id in SESSIONS:
-        del SESSIONS[session_id]
-    response = JSONResponse({"ok": True})
-    response.delete_cookie("session_id")
-    return response
+async def logout(
+    response: Response,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db)
+):
+    if session_id:
+        db.query(DBSession).filter(DBSession.session_id == session_id).delete()
+        db.commit()
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie("session_id")
+    return resp
 
 
 @app.get("/api/me")
-async def me(session_id: str = Cookie(default=None)):
-    if session_id and session_id in SESSIONS:
-        return JSONResponse({"ok": True, "username": SESSIONS[session_id]})
+async def me(
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db)
+):
+    if session_id:
+        db_session = db.query(DBSession).filter(DBSession.session_id == session_id).first()
+        if db_session:
+            return JSONResponse({"ok": True, "username": db_session.username})
     return JSONResponse({"ok": False})
+
+
+@app.get("/api/users")
+async def list_users(
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db)
+):
+    """Список всех зарегистрированных пользователей (без паролей)"""
+    if not session_id:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    db_session = db.query(DBSession).filter(DBSession.session_id == session_id).first()
+    if not db_session:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    users = db.query(User).all()
+    return JSONResponse({
+        "ok": True,
+        "users": [
+            {"id": u.id, "username": u.username, "created_at": str(u.created_at)}
+            for u in users
+        ]
+    })
