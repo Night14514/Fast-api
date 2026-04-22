@@ -1,12 +1,18 @@
-from fastapi import FastAPI, Request, Response, Cookie, Depends
+from future import annotations
+
+import glob
+import random
+import uuid
+
+from fastapi import Cookie, Depends, FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-import os, uuid, random, glob
+from sqlalchemy.orm import Session
 
-from database import get_db, init_db, User, Session as DBSession
+from database import get_db, init_db
+from models import Session as DBSession, User
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -44,18 +50,17 @@ async def index(request: Request):
 @app.get("/api/meme")
 async def get_meme(
     session_id: str = Cookie(default=None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     if not session_id:
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
-    db_session = db.query(DBSession).filter(DBSession.session_id == session_id).first()
-    if not db_session:
+    row = db.query(DBSession).filter(DBSession.session_id == session_id).first()
+    if not row:
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     memes = get_all_memes()
     if not memes:
         return JSONResponse({"ok": False, "error": "no memes found"}, status_code=404)
-    chosen = random.choice(memes)
-    return JSONResponse({"ok": True, "url": "/" + chosen, "total": len(memes)})
+    return JSONResponse({"ok": True, "url": "/" + random.choice(memes), "total": len(memes)})
 
 
 @app.post("/api/register")
@@ -74,22 +79,19 @@ async def register(request: Request, db: Session = Depends(get_db)):
     if password != confirm:
         return JSONResponse({"ok": False, "error": "Пароли не совпадают"})
 
-    existing = db.query(User).filter(User.username == username).first()
-    if existing:
+    if db.query(User).filter(User.username == username).first():
         return JSONResponse({"ok": False, "error": "Этот логин уже занят"})
 
-    new_user = User(username=username, password_hash=hash_password(password))
-    db.add(new_user)
+    db.add(User(username=username, password_hash=hash_password(password)))
     db.commit()
 
-    session_id = str(uuid.uuid4())
-    db_session = DBSession(session_id=session_id, username=username)
-    db.add(db_session)
+    sid = str(uuid.uuid4())
+    db.add(DBSession(session_id=sid, username=username))
     db.commit()
 
-    response = JSONResponse({"ok": True, "username": username})
-    response.set_cookie("session_id", session_id, httponly=True, samesite="lax")
-    return response
+    resp = JSONResponse({"ok": True, "username": username})
+    resp.set_cookie("session_id", sid, httponly=True, samesite="lax")
+    return resp
 
 
 @app.post("/api/login")
@@ -107,20 +109,18 @@ async def login(request: Request, db: Session = Depends(get_db)):
     if not verify_password(password, user.password_hash):
         return JSONResponse({"ok": False, "error": "Неверный пароль"})
 
-    session_id = str(uuid.uuid4())
-    db_session = DBSession(session_id=session_id, username=username)
-    db.add(db_session)
+    sid = str(uuid.uuid4())
+    db.add(DBSession(session_id=sid, username=username))
     db.commit()
-    response = JSONResponse({"ok": True, "username": username})
-    response.set_cookie("session_id", session_id, httponly=True, samesite="lax")
-    return response
 
-
-@app.post("/api/logout")
+    resp = JSONResponse({"ok": True, "username": username})
+    resp.set_cookie("session_id", sid, httponly=True, samesite="lax")
+    return resp
+[22.04.2026 21:42] ••𝓝𝓲𝓰𝓱𝓽☾: @app.post("/api/logout")
 async def logout(
     response: Response,
     session_id: str = Cookie(default=None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     if session_id:
         db.query(DBSession).filter(DBSession.session_id == session_id).delete()
@@ -131,33 +131,22 @@ async def logout(
 
 
 @app.get("/api/me")
-async def me(
-    session_id: str = Cookie(default=None),
-    db: Session = Depends(get_db)
-):
+async def me(session_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     if session_id:
-        db_session = db.query(DBSession).filter(DBSession.session_id == session_id).first()
-        if db_session:
-            return JSONResponse({"ok": True, "username": db_session.username})
+        row = db.query(DBSession).filter(DBSession.session_id == session_id).first()
+        if row:
+            return JSONResponse({"ok": True, "username": row.username})
     return JSONResponse({"ok": False})
 
 
 @app.get("/api/users")
-async def list_users(
-    session_id: str = Cookie(default=None),
-    db: Session = Depends(get_db)
-):
-    """Список всех зарегистрированных пользователей (без паролей)"""
+async def list_users(session_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     if not session_id:
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
-    db_session = db.query(DBSession).filter(DBSession.session_id == session_id).first()
-    if not db_session:
+    if not db.query(DBSession).filter(DBSession.session_id == session_id).first():
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     users = db.query(User).all()
     return JSONResponse({
         "ok": True,
-        "users": [
-            {"id": u.id, "username": u.username, "created_at": str(u.created_at)}
-            for u in users
-        ]
+        "users": [{"id": u.id, "username": u.username, "created_at": str(u.created_at)} for u in users],
     })

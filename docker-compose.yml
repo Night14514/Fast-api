@@ -1,40 +1,34 @@
-version: "3.9"
-
 services:
 
-  # ─── PostgreSQL ───────────────────────────────────────────────
   db:
     image: postgres:16-alpine
-    container_name: fastapi_db
+    container_name: meme_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: fastapi_user
       POSTGRES_PASSWORD: fastapi_pass
       POSTGRES_DB: fastapi_db
     ports:
-      - "5432:5432"          # можно убрать, если не нужен доступ снаружи
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fastapi_user -d fastapi_db"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # ─── FastAPI приложение ───────────────────────────────────────
   app:
     build: .
-    container_name: fastapi_app
+    container_name: meme_app
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://fastapi_user:fastapi_pass@db:5432/fastapi_db
+      DATABASE_URL: postgresql+psycopg://fastapi_user:fastapi_pass@db:5432/fastapi_db
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - .:/app          # hot-reload: изменения в коде сразу видны
 
 volumes:
-  postgres_data:
+  pgdata:
