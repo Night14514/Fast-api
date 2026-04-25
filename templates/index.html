@@ -145,6 +145,7 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;
 }
   .meme-subtitle { font-size: 0.95rem; color: var(--muted2); font-weight: 300; }
+  .meme-subtitle strong { color: var(--accent3); font-weight: 600; }
   .meme-card-wrap { position: relative; width: 100%; max-width: 560px; margin-bottom: 36px; }
   .meme-card-wrap::before {
     content: ''; position: absolute; inset: -3px; border-radius: 22px;
@@ -199,6 +200,37 @@
   @keyframes spin { to{transform:rotate(360deg)} }
   .btn-next.loading .btn-text, .btn-next.loading .btn-icon { display: none; }
   .btn-next.loading .btn-spinner { display: inline-block; }
+  .meme-progress {
+    width: min(560px, 100%);
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(24,24,40,0.7), rgba(15,15,26,0.9));
+  }
+  .meme-progress-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.82rem;
+    color: var(--muted2);
+    margin-bottom: 10px;
+  }
+  .meme-progress-top span strong { color: var(--accent3); }
+  .meme-progress-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .meme-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+    transition: width 0.35s ease;
+  }
   .reactions { display: flex; gap: 10px; margin-top: 20px; }
   .reaction-btn {
     display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px;
@@ -315,7 +347,7 @@
     <div class="meme-header">
       <p class="meme-welcome" id="memeWelcome">Добро пожаловать!</p>
       <h2 class="meme-title">Мем по требованию</h2>
-      <p class="meme-subtitle">Нажми кнопку и получи случайный мем.</p>
+      <p class="meme-subtitle">Нажми кнопку и получи случайный мем <strong>без повторов до конца круга</strong>.</p>
     </div>
 
     <div class="meme-card-wrap" id="memeCardWrap" style="display:none">
@@ -332,6 +364,15 @@
         <span class="btn-text">Следующий мем</span>
         <div class="btn-spinner"></div>
       </button>
+    </div>
+    <div class="meme-progress" id="memeProgress" style="display:none">
+      <div class="meme-progress-top">
+        <span>Показано в круге: <strong id="progressSeen">0</strong>/<strong id="progressTotal">0</strong></span>
+        <span>Осталось: <strong id="progressRemain">0</strong></span>
+      </div>
+      <div class="meme-progress-bar">
+        <div class="meme-progress-fill" id="progressFill"></div>
+      </div>
     </div>
 
     <div class="reactions" id="reactions" style="display:none">
@@ -396,6 +437,8 @@
 
 <script>
 var memeCount = 0;
+var cycleTotal = 0;
+var cycleSeen = 0;
 
 function openModal(type) {
   document.getElementById('overlay').classList.add('active');
@@ -462,6 +505,20 @@ function setGuest() {
   document.getElementById('navUser').style.display = 'none';
   document.getElementById('heroSection').style.display = 'flex';
   document.getElementById('memeZone').style.display = 'none';
+  cycleTotal = 0;
+  cycleSeen = 0;
+}
+
+function updateProgress(total, remaining) {
+  if (!total) return;
+  cycleTotal = total;
+  cycleSeen = total - remaining;
+  var percent = Math.round((cycleSeen / cycleTotal) * 100);
+  document.getElementById('memeProgress').style.display = 'block';
+  document.getElementById('progressSeen').textContent = String(cycleSeen);
+  document.getElementById('progressTotal').textContent = String(cycleTotal);
+  document.getElementById('progressRemain').textContent = String(remaining);
+  document.getElementById('progressFill').style.width = String(percent) + '%';
 }
 
 function loadMeme() {
@@ -483,6 +540,8 @@ setGuest();
       if (!data.ok) { showToast('Не удалось загрузить мем'); return; }
       memeCount++;
       document.getElementById('memeNum').textContent = memeCount;
+      updateProgress(data.total, data.remaining);
+      if (data.restarted) showToast('Новый круг мемов запущен');
 
       var wrap = document.getElementById('memeCardWrap');
       var img = document.getElementById('memeImg');

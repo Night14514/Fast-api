@@ -1,4 +1,4 @@
-from future import annotations
+from __future__ import annotations
 
 import os
 from sqlalchemy import create_engine

@@ -26,9 +26,27 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://fastapi_user:fastapi_pass@db:5432/fastapi_db
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: meme_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   pgdata:
+  redisdata:

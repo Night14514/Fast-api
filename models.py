@@ -1,4 +1,4 @@
-from future import annotations
+from __future__ import annotations
 
 from datetime import datetime
 from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, func
@@ -10,7 +10,7 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
-    tablename = "users"
+    __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
@@ -21,7 +21,7 @@ class User(Base):
 
 
 class Session(Base):
-    tablename = "sessions"
+    __tablename__ = "sessions"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)

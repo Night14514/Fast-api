@@ -1,4 +1,4 @@
-from future import annotations
+from __future__ import annotations
 
 import glob
 import random
@@ -17,6 +17,7 @@ from models import Session as DBSession, User
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+meme_pool_by_session: dict[str, list[str]] = {}
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -42,6 +43,20 @@ def get_all_memes() -> list[str]:
     return [f.replace("\\", "/") for f in files]
 
 
+def get_next_meme_for_session(session_id: str, memes: list[str]) -> tuple[str, int, bool]:
+    existing_pool = meme_pool_by_session.get(session_id)
+    pool = [] if existing_pool is None else [m for m in existing_pool if m in memes]
+    restarted = existing_pool is not None and len(pool) == 0
+
+    if not pool:
+        pool = memes.copy()
+        random.shuffle(pool)
+
+    next_meme = pool.pop()
+    meme_pool_by_session[session_id] = pool
+    return next_meme, len(pool), restarted
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
@@ -60,7 +75,14 @@ async def get_meme(
     memes = get_all_memes()
     if not memes:
         return JSONResponse({"ok": False, "error": "no memes found"}, status_code=404)
-    return JSONResponse({"ok": True, "url": "/" + random.choice(memes), "total": len(memes)})
+    meme, remaining, restarted = get_next_meme_for_session(session_id, memes)
+    return JSONResponse({
+        "ok": True,
+        "url": "/" + meme,
+        "total": len(memes),
+        "remaining": remaining,
+        "restarted": restarted,
+    })
 
 
 @app.post("/api/register")
@@ -116,7 +138,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
     resp = JSONResponse({"ok": True, "username": username})
     resp.set_cookie("session_id", sid, httponly=True, samesite="lax")
     return resp
-[22.04.2026 21:42] ••𝓝𝓲𝓰𝓱𝓽☾: @app.post("/api/logout")
+@app.post("/api/logout")
 async def logout(
     response: Response,
     session_id: str = Cookie(default=None),
@@ -125,6 +147,7 @@ async def logout(
     if session_id:
         db.query(DBSession).filter(DBSession.session_id == session_id).delete()
         db.commit()
+        meme_pool_by_session.pop(session_id, None)
     resp = JSONResponse({"ok": True})
     resp.delete_cookie("session_id")
     return resp
