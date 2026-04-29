@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import mimetypes
 import random
 import re
 import uuid
@@ -23,6 +25,9 @@ templates = Jinja2Templates(directory="templates")
 meme_pool_by_session: dict[str, list[str]] = {}
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+DEFAULT_CONTENT_TYPE = "application/octet-stream"
 
 
 @app.on_event("startup")
@@ -127,9 +132,8 @@ def get_all_static_memes() -> list[str]:
     static_dir = Path(__file__).resolve().parent / "static"
     if not static_dir.exists():
         return []
-    allowed = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
     return sorted(
-        [p.name for p in static_dir.iterdir() if p.is_file() and p.suffix.lower() in allowed]
+        [p.name for p in static_dir.iterdir() if p.is_file() and p.suffix.lower() in ALLOWED_EXTENSIONS]
     )
 
 
@@ -292,6 +296,65 @@ async def list_users(session_id: str = Cookie(default=None), db: Session = Depen
     })
 
 
+def detect_content_type(path: Path) -> str:
+    guessed, _ = mimetypes.guess_type(str(path))
+    return guessed or DEFAULT_CONTENT_TYPE
+
+
+def import_static_memes_into_db(db: Session) -> dict[str, int]:
+    static_dir = Path(__file__).resolve().parent / "static"
+    if not static_dir.exists():
+        return {"imported": 0, "skipped": 0, "total": 0}
+
+    meme_files = sorted(
+        [
+            p
+            for p in static_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in ALLOWED_EXTENSIONS
+        ]
+    )
+    imported = 0
+    skipped = 0
+
+    for meme_path in meme_files:
+        file_bytes = meme_path.read_bytes()
+        checksum = hashlib.sha256(file_bytes).hexdigest()
+
+        existing_asset = db.query(MediaAsset).filter(MediaAsset.checksum == checksum).first()
+        if existing_asset:
+            skipped += 1
+            continue
+
+        asset = MediaAsset(
+            storage_key=f"static-import:{uuid.uuid4()}",
+            file_name=meme_path.name,
+            content_type=detect_content_type(meme_path),
+            size_bytes=len(file_bytes),
+            checksum=checksum,
+            data=file_bytes,
+        )
+        db.add(asset)
+        db.flush()
+
+        title = meme_path.stem.replace("_", " ").strip() or "Imported meme"
+        slug = create_unique_slug(db, title)
+        db.add(
+            Meme(
+                title=title,
+                slug=slug,
+                description="Imported from static folder",
+                media_asset_id=asset.id,
+                is_published=True,
+            )
+        )
+        imported += 1
+
+    if imported:
+        db.commit()
+
+    return {"imported": imported, "skipped": skipped, "total": len(meme_files)}
+
+
 @app.get("/api/admin/overview")
 async def admin_overview(session_id: str = Cookie(default=None), db: Session = Depends(get_db)):
     require_admin(session_id, db)
@@ -324,6 +387,141 @@ async def admin_overview(session_id: str = Cookie(default=None), db: Session = D
             for m in latest_memes
         ],
     })
+
+
+@app.get("/api/admin/users")
+async def admin_list_users(session_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+    require_admin(session_id, db)
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    return JSONResponse(
+        {
+            "ok": True,
+            "users": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "display_name": u.display_name,
+                    "is_active": bool(u.is_active),
+                    "is_admin": bool(u.admin_profile),
+                    "created_at": str(u.created_at),
+                    "updated_at": str(u.updated_at),
+                }
+                for u in users
+            ],
+        }
+    )
+
+
+@app.patch("/api/admin/users/{user_id}")
+async def admin_update_user(
+    user_id: int,
+    request: Request,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    require_admin(session_id, db)
+    payload = await request.json()
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return JSONResponse({"ok": False, "error": "Пользователь не найден"}, status_code=404)
+
+    if "display_name" in payload:
+        display_name = str(payload.get("display_name") or "").strip()
+        user.display_name = display_name[:100]
+    if "is_active" in payload:
+        user.is_active = bool(payload.get("is_active"))
+    if payload.get("password"):
+        user.password_hash = hash_password(str(payload["password"]))
+
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/admin/users/{user_id}")
+async def admin_delete_user(
+    user_id: int,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    current = require_admin(session_id, db)
+    if current.id == user_id:
+        return JSONResponse({"ok": False, "error": "Нельзя удалить самого себя"}, status_code=400)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return JSONResponse({"ok": False, "error": "Пользователь не найден"}, status_code=404)
+
+    db.delete(user)
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/admin/memes")
+async def admin_list_memes(session_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+    require_admin(session_id, db)
+    rows = db.query(Meme).order_by(Meme.created_at.desc()).limit(200).all()
+    return JSONResponse(
+        {
+            "ok": True,
+            "memes": [
+                {
+                    "id": m.id,
+                    "title": m.title,
+                    "slug": m.slug,
+                    "description": m.description,
+                    "is_published": bool(m.is_published),
+                    "views_count": int(m.views_count),
+                    "file_name": m.media_asset.file_name if m.media_asset else None,
+                    "content_type": m.media_asset.content_type if m.media_asset else None,
+                    "size_bytes": int(m.media_asset.size_bytes) if m.media_asset else None,
+                    "created_at": str(m.created_at),
+                }
+                for m in rows
+            ],
+        }
+    )
+
+
+@app.patch("/api/admin/memes/{meme_id}")
+async def admin_update_meme(
+    meme_id: int,
+    request: Request,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    require_admin(session_id, db)
+    payload = await request.json()
+    meme = db.query(Meme).filter(Meme.id == meme_id).first()
+    if not meme:
+        return JSONResponse({"ok": False, "error": "Мем не найден"}, status_code=404)
+
+    if "title" in payload:
+        title = str(payload.get("title") or "").strip()
+        if not title:
+            return JSONResponse({"ok": False, "error": "title обязателен"}, status_code=400)
+        meme.title = title[:150]
+    if "description" in payload:
+        meme.description = str(payload.get("description") or "")
+    if "is_published" in payload:
+        meme.is_published = bool(payload.get("is_published"))
+    if "slug" in payload:
+        new_slug = slugify(str(payload.get("slug") or ""))
+        if not new_slug:
+            return JSONResponse({"ok": False, "error": "slug обязателен"}, status_code=400)
+        exists = db.query(Meme.id).filter(Meme.slug == new_slug, Meme.id != meme.id).first()
+        if exists:
+            return JSONResponse({"ok": False, "error": "slug уже занят"}, status_code=400)
+        meme.slug = new_slug[:180]
+
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/admin/memes/import-static")
+async def admin_import_static_memes(session_id: str = Cookie(default=None), db: Session = Depends(get_db)):
+    require_admin(session_id, db)
+    result = import_static_memes_into_db(db)
+    return JSONResponse({"ok": True, **result})
 
 
 @app.post("/api/admin/memes")
@@ -398,5 +596,71 @@ async def admin_add_admin(
     if user.admin_profile:
         return JSONResponse({"ok": False, "error": "Уже администратор"}, status_code=400)
     db.add(Administrator(user_id=user.id, role=role[:32], notes=notes))
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/admin/admins/{admin_id}")
+async def admin_get_admin(
+    admin_id: int,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    require_admin(session_id, db)
+    row = db.query(Administrator).filter(Administrator.id == admin_id).first()
+    if not row:
+        return JSONResponse({"ok": False, "error": "Администратор не найден"}, status_code=404)
+    return JSONResponse(
+        {
+            "ok": True,
+            "admin": {
+                "id": row.id,
+                "role": row.role,
+                "username": row.user.username,
+                "user_id": row.user_id,
+                "notes": row.notes,
+                "created_at": str(row.created_at),
+            },
+        }
+    )
+
+
+@app.patch("/api/admin/admins/{admin_id}")
+async def admin_update_admin(
+    admin_id: int,
+    request: Request,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    require_admin(session_id, db)
+    payload = await request.json()
+    row = db.query(Administrator).filter(Administrator.id == admin_id).first()
+    if not row:
+        return JSONResponse({"ok": False, "error": "Администратор не найден"}, status_code=404)
+
+    if "role" in payload:
+        role = str(payload.get("role") or "").strip() or "moderator"
+        row.role = role[:32]
+    if "notes" in payload:
+        row.notes = str(payload.get("notes") or "").strip()
+
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/admin/admins/{admin_id}")
+async def admin_delete_admin(
+    admin_id: int,
+    session_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    current_user = require_admin(session_id, db)
+    row = db.query(Administrator).filter(Administrator.id == admin_id).first()
+    if not row:
+        return JSONResponse({"ok": False, "error": "Администратор не найден"}, status_code=404)
+    if row.user_id == current_user.id:
+        return JSONResponse({"ok": False, "error": "Нельзя снять админку с самого себя"}, status_code=400)
+
+    db.delete(row)
     db.commit()
     return JSONResponse({"ok": True})
